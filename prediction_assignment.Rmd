@@ -1,0 +1,107 @@
+---
+title: "Prediction Assigment Writeup"
+author: "Sylvester Cash"
+date: "June 18, 2016"
+output: html_document
+---
+
+#Overview
+In this project I will analyze data collected from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants using devices such as Jawbone Up, Nike FuelBand, and Fitbit. Using the collected data, I will create a prediction model to predict the manner in which they did the exercises and predict 20 different test case scenarios.
+
+```{r, warning=FALSE, message=FALSE}
+setwd('C:/data_science/machine_learning/prediction_assignment')
+
+library(caret)
+library(randomForest)
+```
+
+```{r}
+training<-read.csv("pml-training.csv",na.strings=c("NA","#DIV/0!"))
+testing<-read.csv("pml-testing.csv",na.strings=c("NA","#DIV/0!"))
+dim(training)
+```
+Note above that the training set has 19,622 observations across 160 variables.
+
+```{r}
+table(training$classe)
+```
+Note above that there are 5 different classes. 
+
+Below we remove any missing values or irrelevant variables in the training and the test sets.
+
+```{r}
+training<-training[, apply(training, 2, function(x) !any(is.na(x)))] 
+training=training[,-c(1:7)]
+
+testing=testing[, apply(testing, 2, function(x) !any(is.na(x)))] 
+testing=testing[,-c(1:7)]
+
+dim(training)
+```
+
+##Data Partition
+
+Now I divide the the data into training, test, and validations sets. I sub-sample 70% of the set for training purposes and 30% for evaluation of model fit.
+
+```{r}
+set.seed(123456)
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+train1  <- training[inTrain,]
+train2  <- training[-inTrain,]
+dim(train1)
+```
+
+```{r}
+dim(train2)
+```
+
+I will fit the model on train1 dataset, evaluate the fit on train2 dataset, and apply it to our true Testing test set.
+
+##Modeling
+
+I use the Random Forest algorithm, the R caret package, and all 53 model parameters.
+
+```{r, cache=TRUE}
+modFit <- train(classe~.,data=train1,method="rf",trControl=trainControl(method="cv",number=2),
+                  prox=TRUE,
+                  verbose=TRUE,
+                  allowParallel=TRUE)
+modFit
+```
+
+We observe above that the training set was divided into two folds for cross validation, with sample sizes of 6869 and 6868 respectively.
+
+##Model Results
+
+Here I test the sample accuracy by applying the predict function on the train2 dataset. 
+
+```{r}
+predictions <- predict(modFit, newdata=train2)
+```
+
+Here I test the sample accuracy by applying the predict function on the train2 dataset. 
+```{r}
+confusion_matrix <- confusionMatrix(predictions, train2$classe)
+confusion_matrix
+```
+
+Note above that the out of sample accuracy rate is 99.7%
+
+##Conlusion
+
+Below I use the predict function to predict the 20 observations in the testing dataset.
+
+```{r}
+pred <- predict(modFit, newdata=testing)
+testing$class <- pred
+submit <- data.frame(problem_id = testing$problem_id, class = pred)
+submit
+```
+
+
+
+
+
+
+
+
